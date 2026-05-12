@@ -7,6 +7,24 @@ import { PBIMProject, PBIMWall, PBIMSpace } from '../lib/pbim/schema';
 // Helper for spaces
 import { getPolygonCoords } from './InteractivePlanEditor';
 
+const getLevelHeight = (levelId: string | undefined, project: PBIMProject): number => {
+  const DEFAULT_HEIGHT = 3.0;
+  if (!levelId) return DEFAULT_HEIGHT;
+  const currentLevel = project.levels.find(l => l.id === levelId);
+  if (!currentLevel) return DEFAULT_HEIGHT;
+
+  // Try to find the level above to calculate height from elevation difference
+  const sortedLevels = [...project.levels].sort((a, b) => a.elevation - b.elevation);
+  const currentIndex = sortedLevels.findIndex(l => l.id === levelId);
+
+  if (currentIndex !== -1 && currentIndex < sortedLevels.length - 1) {
+    const diff = sortedLevels[currentIndex + 1].elevation - currentLevel.elevation;
+    if (diff > 0) return diff;
+  }
+
+  return currentLevel.height || DEFAULT_HEIGHT;
+};
+
 // Helper to convert Wall to 3D Transform
 const buildWallTransform = (wall: PBIMWall, levelZ: number) => {
   const [x1, y1] = wall.start;
@@ -75,8 +93,8 @@ const RoofMesh = ({ space, project, clipPlanes }: { space: PBIMSpace, project: P
   const currentLevel = project.levels.find(l => l.id === space.level_id);
   const zElevation = currentLevel ? currentLevel.elevation : 0;
   
-  // Quick hack: Assume wall height is typically 3m
-  let maxWHeight = 3;
+  const levelHeight = getLevelHeight(space.level_id, project);
+  let maxWHeight = levelHeight;
   if (space.boundary_walls) {
     space.boundary_walls.forEach(wid => {
       const w = project.walls.find(x => x.id === wid);
@@ -217,7 +235,7 @@ const WallMesh = ({ wall, project, selected, onClick, clipPlanes }: { wall: PBIM
   );
 };
 
-const SlabMesh = ({ slab, selected, onClick, clipPlanes }: { slab: any, selected: boolean, onClick: (e: any) => void, clipPlanes: THREE.Plane[], key?: React.Key }) => {
+const SlabMesh = ({ slab, project, selected, onClick, clipPlanes }: { slab: any, project: PBIMProject, selected: boolean, onClick: (e: any) => void, clipPlanes: THREE.Plane[], key?: React.Key }) => {
   const geometry = useMemo(() => {
     const shape = new THREE.Shape();
     if (!slab.boundary || slab.boundary.length < 3) return null;
@@ -249,7 +267,9 @@ const SlabMesh = ({ slab, selected, onClick, clipPlanes }: { slab: any, selected
 
   const semanticMat = getSemanticMaterial(slab.material, baseColor, slab.type === 'Foundation');
 
-  const yPos = (slab.elevation_offset || 0) + (slab.type === 'Roof' ? 3 : slab.type === 'Foundation' ? -slab.thickness : 0);
+  const levelZ = project.levels.find(l => l.id === slab.level_id)?.elevation || 0;
+  const levelHeight = getLevelHeight(slab.level_id, project);
+  const yPos = levelZ + (slab.elevation_offset || 0) + (slab.type === 'Roof' ? levelHeight : slab.type === 'Foundation' ? -slab.thickness : 0);
 
   return (
     <mesh 
@@ -280,6 +300,8 @@ const SlabMesh = ({ slab, selected, onClick, clipPlanes }: { slab: any, selected
 const ComponentMesh = ({ component, project, selected, onClick, clipPlanes }: { component: any, project: PBIMProject, selected: boolean, onClick: (e: any) => void, clipPlanes: THREE.Plane[], key?: React.Key }) => {
     const levelZ = project.levels.find(l => l.id === component.level_id)?.elevation || 0;
     
+    const levelHeight = getLevelHeight(component.level_id, project);
+
     const geometry = useMemo(() => {
       const shape = new THREE.Shape();
       if (!component.boundary || component.boundary.length < 3) return null;
@@ -290,11 +312,11 @@ const ComponentMesh = ({ component, project, selected, onClick, clipPlanes }: { 
       }
       shape.lineTo(component.boundary[0][0], -component.boundary[0][1]);
   
-      const depth = component.type === 'Column' ? 3.0 : component.type === 'Beam' ? 0.4 : 0.15;
+      const depth = component.type === 'Column' ? levelHeight : component.type === 'Beam' ? 0.4 : 0.15;
       const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false });
       geo.applyMatrix4(new THREE.Matrix4().makeRotationX(Math.PI / 2));
       return geo;
-    }, [component]);
+    }, [component, levelHeight]);
   
     if (!geometry) return null;
   
@@ -304,7 +326,7 @@ const ComponentMesh = ({ component, project, selected, onClick, clipPlanes }: { 
 
     const semanticMat = getSemanticMaterial(component.material, baseColor, component.type === 'Beam' || component.type === 'Column');
   
-    const yPos = levelZ + (component.type === 'Column' ? 3.0 : component.type === 'Marquee' ? 2.8 : component.type === 'Eave' ? 3.1 : 3.0);
+    const yPos = levelZ + (component.type === 'Column' ? levelHeight : component.type === 'Marquee' ? levelHeight * 0.93 : component.type === 'Eave' ? levelHeight * 1.03 : levelHeight);
   
     return (
       <mesh 
@@ -341,7 +363,8 @@ const StairMesh = ({ stair, project, clipPlanes }: { stair: any, project: PBIMPr
   const angle = Math.atan2(dy, dx);
   const treads = stair.treads || 15;
   const treadDepth = length / treads;
-  const treadHeight = 3.0 / treads; // assuming 3m height per floor
+  const levelHeight = getLevelHeight(stair.level_id, project);
+  const treadHeight = levelHeight / treads; // assuming level height per floor
 
   const geometry = useMemo(() => {
     const geo = new THREE.BufferGeometry();
@@ -539,6 +562,7 @@ export const ThreeDViewer = ({
         <SlabMesh 
           key={slab.id} 
           slab={slab} 
+          project={project}
           selected={selectedObjectId === slab.id}
           clipPlanes={clipPlanes}
           onClick={(e) => {
