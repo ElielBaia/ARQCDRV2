@@ -1,0 +1,82 @@
+{
+  "semantic_styles": {
+    "styles": {
+      "archdaily_contemporary": {
+        "name": "ArchDaily Contemporary",
+        "description": "Inspired by ArchDaily publications: Clean lines, emphasis on light and shadow, nuanced material representation. Focus on spatial flow and visual lightness.",
+        "graphics": {
+          "background": "#f8fafc",
+          "wall_fill": "#1e293b",
+          "wall_stroke": "#0f172a",
+          "wall_stroke_width": 0.05,
+          "social_space_fill": "#fdfbf7",
+          "intimate_space_fill": "#f8fafc",
+          "service_space_fill": "#f1f5f9",
+          "circulation_space_fill": "#ffffff",
+          "text_color": "#334155",
+          "glass": "#bae6fd",
+          "wood": "#dcd3b6",
+          "concrete": "#cbd5e1"
+        }
+      },
+      "vitruvius_academic": {
+        "name": "Vitruvius Academic",
+        "description": "Technical and rigorous, inspired by academic journals. Monochromatic, high contrast, perfect for analytical diagrams.",
+        "graphics": {
+          "background": "#ffffff",
+          "wall_fill": "#000000",
+          "wall_stroke": "#000000",
+          "wall_stroke_width": 0.08,
+          "social_space_fill": "#f5f5f5",
+          "intimate_space_fill": "#ebebeb",
+          "service_space_fill": "#e0e0e0",
+          "circulation_space_fill": "#ffffff",
+          "text_color": "#000000",
+          "glass": "#e5e5e5",
+          "wood": "#d4d4d4",
+          "concrete": "#8c8c8c"
+        }
+      },
+      "scandinavian_minimal": {
+        "name": "Scandinavian Minimalist",
+        "description": "Warm minimal approach, lots of white space, pale woods, muted natural tones.",
+        "graphics": {
+          "background": "#fafafa",
+          "wall_fill": "#404040",
+          "wall_stroke": "#262626",
+          "wall_stroke_width": 0.03,
+          "social_space_fill": "#fdfdfc",
+          "intimate_space_fill": "#f7f7f5",
+          "service_space_fill": "#f2f2ef",
+          "circulation_space_fill": "#ffffff",
+          "text_color": "#52525b",
+          "glass": "#e0f2fe",
+          "wood": "#fcd34d",
+          "concrete": "#d4d4d8"
+        }
+      }
+    },
+    "typologies": [
+      {
+        "type": "residential_brazilian_modernism",
+        "semantic_nodes": ["living_integrated", "veranda", "gourmet", "kitchen", "suite_master", "suite", "circulation", "service", "garden"],
+        "recommended_style": "archdaily_contemporary",
+        "design_rules": {
+          "open_plan": true,
+          "cross_ventilation": true,
+          "shading_devices": ["brise_soleil", "pergola"]
+        }
+      },
+      {
+        "type": "residential_single_family",
+        "semantic_nodes": ["living", "dining", "kitchen", "bedroom", "bathroom", "circulation", "outdoor"],
+        "recommended_style": "scandinavian_minimal"
+      },
+      {
+        "type": "commercial_office",
+        "semantic_nodes": ["workspace", "meeting", "pantry", "circulation", "restroom", "reception"],
+        "recommended_style": "vitruvius_academic"
+      }
+    ]
+  }
+}

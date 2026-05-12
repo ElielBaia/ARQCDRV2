@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "PowerShell($az = Get-Command az -ErrorAction SilentlyContinue; $azd = Get-Command azd -ErrorAction SilentlyContinue; \"az:  $\\($az.Source\\)\"; \"azd: $\\($azd.Source\\)\"; if \\($az\\) { az --version | Select-String -Pattern '^\\(azure-cli|core\\)' } ; if \\($azd\\) { azd version })",
+      "PowerShell(winget install --id Microsoft.Azd --silent --accept-package-agreements --accept-source-agreements --disable-interactivity 2>&1)"
+    ]
+  }
+}
