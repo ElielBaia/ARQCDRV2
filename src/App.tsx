@@ -22,14 +22,6 @@ import { TechnicalSheet } from './components/TechnicalSheet';
 import { TakeoffPanel } from './components/TakeoffPanel';
 import { MetadataEditor } from './components/MetadataEditor';
 import { PBIMTreeViewer } from './components/PBIMTreeViewer';
-import {
-  isMsalConfigured,
-  loginPopup,
-  logout as msalLogout,
-  getActiveAccount,
-  authedFetch,
-} from './lib/azure/msal-browser';
-
 interface User {
   id: string;
   email?: string;
@@ -37,8 +29,9 @@ interface User {
 }
 
 async function savePBIMProjectToCloud(project: PBIMProject): Promise<{ persisted: boolean }> {
-  const response = await authedFetch('/api/projects/save', {
+  const response = await fetch('/api/projects/save', {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ project }),
   });
   if (!response.ok) {
@@ -95,27 +88,15 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [currentLevelId, setCurrentLevelId] = useState<string>('');
 
-  // Restore session: MSAL when configured, else server-side /api/me probe.
+  // Restore session: ask the server who we are (anonymous OK).
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        if (isMsalConfigured()) {
-          const account = await getActiveAccount();
-          if (!cancelled && account) {
-            setUser({
-              id: account.localAccountId || account.homeAccountId,
-              email: account.username,
-              name: account.name,
-            });
-            return;
-          }
-        }
-        // Fallback: ask the server who we are (anonymous OK).
         const r = await fetch('/api/me');
         if (r.ok) {
           const data = await r.json();
-          if (!cancelled && data.user && !data.anonymous) {
+          if (!cancelled && data.user) {
             setUser(data.user);
           }
         }
@@ -127,35 +108,11 @@ export default function App() {
   }, []);
 
   const handleLogin = async () => {
-    try {
-      if (isMsalConfigured()) {
-        const result = await loginPopup();
-        const account = result.account;
-        if (account) {
-          setUser({
-            id: account.localAccountId || account.homeAccountId,
-            email: account.username,
-            name: account.name,
-          });
-        }
-      } else {
-        // No MSAL configured — fall back to server-side Authorization Code flow.
-        window.location.href = '/auth/login';
-      }
-    } catch (e: any) {
-      console.error(e);
-      setActionAlert({ explanation: e?.message || 'Login failed.' });
-    }
+     setUser({ id: 'local-user', name: 'Local User' });
   };
 
   const handleLogout = async () => {
-    try {
-      if (isMsalConfigured()) {
-        await msalLogout();
-      }
-    } finally {
-      setUser(null);
-    }
+    setUser(null);
   };
 
   const handleSaveToCloud = async () => {
@@ -164,20 +121,18 @@ export default function App() {
       return;
     }
     try {
-      const result = await savePBIMProjectToCloud(project);
+      await savePBIMProjectToCloud(project);
       setActionAlert({
-        explanation: result.persisted
-          ? 'Projeto salvo na nuvem (Azure Cosmos DB).'
-          : 'Projeto salvo localmente (Cosmos DB indisponível no servidor).',
+        explanation: 'Projeto salvo no armazenamento local do servidor.',
       });
     } catch (e: any) {
       console.error(e);
-      setActionAlert({ explanation: e?.message || 'Erro ao salvar na nuvem.' });
+      setActionAlert({ explanation: e?.message || 'Erro ao salvar.' });
     }
   };
 
   useEffect(() => {
-    authedFetch('/api/projects/sample/model')
+    fetch('/api/projects/sample/model')
       .then(r => r.json())
       .then((data: PBIMProject) => {
         setProject(data);
@@ -209,13 +164,14 @@ export default function App() {
             setIsCriticizing(true);
             const runCritic = async () => {
               try {
-                const r = await authedFetch('/api/projects/critic', {
+                const r = await fetch('/api/projects/critic', {
                   method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ project, svgStr: newSvgStr })
                 });
                 const data = await r.json();
                 if (!r.ok) throw new Error(data.error || 'Failed to analyze project');
-                if (Array.isArray(data)) setCritics(data);
+                if (data.report) setCritics([{ title: 'Architectural Critic', axis: 'General', message: data.report }]);
                 setIsCriticizing(false);
               } catch (e: any) {
                 console.error(e);
@@ -231,8 +187,9 @@ export default function App() {
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
-      const r = await authedFetch('/api/projects/from-briefing', {
+      const r = await fetch('/api/projects/from-briefing', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt })
       });
       const data = await r.json();
@@ -251,8 +208,9 @@ export default function App() {
     setIsActing(true);
     setActionAlert(null);
     try {
-      const r = await authedFetch('/api/projects/action', {
+      const r = await fetch('/api/projects/action', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: actionPrompt, targetId: selectedObjectId, currentProject: project, svgStr })
       });
       const data = await r.json();
@@ -290,8 +248,9 @@ export default function App() {
     setIsActing(true);
     setActionAlert(null);
     try {
-      const r = await authedFetch('/api/projects/action', {
+      const r = await fetch('/api/projects/action', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: autoPrompt, targetId: project.project_id, currentProject: project, svgStr })
       });
       const data = await r.json();
