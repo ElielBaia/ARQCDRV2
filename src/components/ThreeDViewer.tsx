@@ -525,7 +525,7 @@ export const ThreeDViewer = ({
             key={stair.id}
             stair={stair}
             project={project}
-             clipPlanes={clipPlanes}
+            clipPlanes={clipPlanes}
           />
         ))}
 
